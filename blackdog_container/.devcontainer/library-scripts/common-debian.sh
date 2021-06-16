@@ -76,6 +76,7 @@ if [ "${PACKAGES_ALREADY_INSTALLED}" != "true" ]; then
 
     PACKAGE_LIST="apt-utils \
         git \
+        openssh-server \
         openssh-client \
         gnupg2 \
         iproute2 \
@@ -114,25 +115,6 @@ if [ "${PACKAGES_ALREADY_INSTALLED}" != "true" ]; then
         manpages-dev \
         python3-pip\
         init-system-helpers"
-        
-    # Needed for adding manpages-posix and manpages-posix-dev which are non-free packages in Debian
-    if [ "${ADD_NON_FREE_PACKAGES}" = "true" ]; then
-        CODENAME="$(cat /etc/os-release | grep -oE '^VERSION_CODENAME=.+$' | cut -d'=' -f2)"
-        sed -i -E "s/deb http:\/\/(deb|httpredir)\.debian\.org\/debian ${CODENAME} main/deb http:\/\/\1\.debian\.org\/debian ${CODENAME} main contrib non-free/" /etc/apt/sources.list
-        sed -i -E "s/deb-src http:\/\/(deb|httredir)\.debian\.org\/debian ${CODENAME} main/deb http:\/\/\1\.debian\.org\/debian ${CODENAME} main contrib non-free/" /etc/apt/sources.list
-        sed -i -E "s/deb http:\/\/(deb|httpredir)\.debian\.org\/debian ${CODENAME}-updates main/deb http:\/\/\1\.debian\.org\/debian ${CODENAME}-updates main contrib non-free/" /etc/apt/sources.list
-        sed -i -E "s/deb-src http:\/\/(deb|httpredir)\.debian\.org\/debian ${CODENAME}-updates main/deb http:\/\/\1\.debian\.org\/debian ${CODENAME}-updates main contrib non-free/" /etc/apt/sources.list
-        sed -i "s/deb http:\/\/security\.debian\.org\/debian-security ${CODENAME}\/updates main/deb http:\/\/security\.debian\.org\/debian-security ${CODENAME}\/updates main contrib non-free/" /etc/apt/sources.list
-        sed -i "s/deb-src http:\/\/security\.debian\.org\/debian-security ${CODENAME}\/updates main/deb http:\/\/security\.debian\.org\/debian-security ${CODENAME}\/updates main contrib non-free/" /etc/apt/sources.list
-        sed -i "s/deb http:\/\/deb\.debian\.org\/debian ${CODENAME}-backports main/deb http:\/\/deb\.debian\.org\/debian ${CODENAME}-backports main contrib non-free/" /etc/apt/sources.list 
-        sed -i "s/deb-src http:\/\/deb\.debian\.org\/debian ${CODENAME}-backports main/deb http:\/\/deb\.debian\.org\/debian ${CODENAME}-backports main contrib non-free/" /etc/apt/sources.list
-        echo "Running apt-get update..."
-        apt-get update
-        PACKAGE_LIST="${PACKAGE_LIST} manpages-posix manpages-posix-dev"
-    else
-        apt-get-update-if-needed
-    fi
-
     # Install libssl1.1 if available
     if [[ ! -z $(apt-cache --names-only search ^libssl1.1$) ]]; then
         PACKAGE_LIST="${PACKAGE_LIST}       libssl1.1"
@@ -388,13 +370,13 @@ if [ "${INSTALL_ZSH}" = "true" ]; then
             "https://github.com/ohmyzsh/ohmyzsh" "${OH_MY_INSTALL_DIR}" 2>&1
         echo -e "$(cat "${TEMPLATE_PATH}")\nDISABLE_AUTO_UPDATE=true\nDISABLE_UPDATE_PROMPT=true" > ${USER_RC_FILE}
         sed -i -e 's/ZSH_THEME=.*/ZSH_THEME="codespaces"/g' ${USER_RC_FILE}
-
         mkdir -p ${OH_MY_INSTALL_DIR}/custom/themes
         echo "${CODESPACES_ZSH}" > "${OH_MY_INSTALL_DIR}/custom/themes/codespaces.zsh-theme"
         # Shrink git while still enabling updates
         cd "${OH_MY_INSTALL_DIR}"
         git repack -a -d -f --depth=1 --window=1
         # Copy to non-root user if one is specified
+
         if [ "${USERNAME}" != "root" ]; then
             cp -rf "${USER_RC_FILE}" "${OH_MY_INSTALL_DIR}" /root
             chown -R ${USERNAME}:${USERNAME} "${USER_RC_PATH}"
@@ -402,6 +384,9 @@ if [ "${INSTALL_ZSH}" = "true" ]; then
     fi
 fi
 
+mkdir -p ${USER_RC_PATH}/blackdog_workspace
+cd ${USER_RC_PATH}/blackdog_workspace
+git clone https://github.com/darkcode357/blackdog
 # Persist image metadata info, script if meta.env found in same directory
 META_INFO_SCRIPT="$(cat << 'EOF'
 #!/bin/sh

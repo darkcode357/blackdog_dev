@@ -104,6 +104,7 @@ fi
 DEFAULT_UTILS="\
     pylint \
     flake8 \
+    poetry \
     autopep8 \
     black \
     yapf \
